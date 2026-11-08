@@ -81,9 +81,27 @@ class ShippingService
                 abort(404, 'Oferta não encontrada para este motorista.');
             }
 
+            // Oferta fechada porque outro motorista ja aceitou a corrida.
+            if ($registro->status === ShippingDriverStatus::Expired) {
+                throw ValidationException::withMessages([
+                    'status' => 'Esta corrida já foi aceita por outro motorista.',
+                ]);
+            }
+
             if ($registro->status !== ShippingDriverStatus::Pending) {
                 throw ValidationException::withMessages([
                     'status' => "Esta oferta já foi respondida ({$registro->status->value}).",
+                ]);
+            }
+
+            // So da para aceitar enquanto a corrida ainda esta sendo procurada
+            // (ex.: o cliente pode ter cancelado enquanto o motorista olhava a oferta).
+            if (
+                $status === ShippingDriverStatus::Accepted
+                && $shipping->status !== ShippingStatus::SearchingDriver
+            ) {
+                throw ValidationException::withMessages([
+                    'status' => 'Esta corrida não está mais disponível.',
                 ]);
             }
 
@@ -100,6 +118,13 @@ class ShippingService
             if ($status === ShippingDriverStatus::Accepted) {
                 $this->transicionar($shipping, ShippingStatus::DriverAssigned);
                 $shipping->update(['driver_id' => $motorista->driver_id]);
+
+                // Fecha as ofertas dos demais motoristas: a corrida deixa de
+                // aparecer para eles (o historico das ofertas e preservado).
+                ShippingDriver::where('shipping_id', $shipping->shipping_id)
+                    ->where('driver_id', '<>', $motorista->driver_id)
+                    ->where('status', ShippingDriverStatus::Pending->value)
+                    ->update(['status' => ShippingDriverStatus::Expired->value]);
             }
         });
     }

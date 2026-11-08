@@ -20,7 +20,9 @@ class RegisterDriverRequest extends FormRequest
                 'required',
                 'email',
                 'max:255',
+                // o e-mail nao pode existir em NENHUMA das duas tabelas (veja RegisterUserRequest)
                 Rule::unique('drivers', 'email'),
+                Rule::unique('users', 'email'),
             ],
             'password' => ['required', 'string', 'min:8', 'confirmed'],
             'cnh' => [
@@ -36,6 +38,24 @@ class RegisterDriverRequest extends FormRequest
             'vehicle_type' => ['nullable', 'string', 'max:50'],
             'license_plate' => ['nullable', 'string', 'max:20', Rule::unique('vehicles', 'license_plate')],
             'capacity_load_kg' => ['nullable', 'numeric', 'min:0.01'],
+        ];
+    }
+
+    public function messages(): array
+    {
+        return [
+            'name.required' => 'Informe o nome.',
+            'email.required' => 'Informe o e-mail.',
+            'email.email' => 'Informe um e-mail válido.',
+            'email.unique' => 'Este e-mail já está cadastrado.',
+            'password.required' => 'Informe a senha.',
+            'password.min' => 'A senha deve ter pelo menos 8 caracteres.',
+            'password.confirmed' => 'A confirmação da senha não confere.',
+            'cnh.required' => 'Informe a CNH.',
+            'cnh.unique' => 'Esta CNH já está cadastrada.',
+            'license_plate.unique' => 'Esta placa já está cadastrada.',
+            'capacity_load_kg.numeric' => 'A capacidade de carga deve ser um número.',
+            'capacity_load_kg.min' => 'A capacidade de carga deve ser maior que zero.',
         ];
     }
 
