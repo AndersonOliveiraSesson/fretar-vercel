@@ -29,9 +29,10 @@ class ShippingController extends Controller
         if ($usuario instanceof User) {
             $consulta->where('user_id', $usuario->user_id);
         } elseif ($usuario instanceof Driver) {
-            // historico do motorista: apenas as corridas atribuidas a ele
-            // (ofertas que ele so recebeu, ou que outro aceitou, nao entram)
-            $consulta->where('driver_id', $usuario->driver_id);
+            $consulta->where(function ($q) use ($usuario) {
+                $q->where('driver_id', $usuario->driver_id)
+                    ->orWhereHas('shippingDrivers', fn ($sub) => $sub->where('driver_id', $usuario->driver_id));
+            });
         }
 
         return ShippingResource::collection($consulta->get());
@@ -43,14 +44,9 @@ class ShippingController extends Controller
 
         $usuario = $request->user();
         $eProprietario = $usuario instanceof User && $shipping->user_id === $usuario->user_id;
-        // motorista: a corrida dele, ou uma oferta ainda pendente de uma corrida em busca
         $eMotorista = $usuario instanceof Driver
             && ($shipping->driver_id === $usuario->driver_id
-                || ($shipping->status->value === 'searching_driver'
-                    && $shipping->shippingDrivers()
-                        ->where('driver_id', $usuario->driver_id)
-                        ->where('status', 'pending')
-                        ->exists()));
+                || $shipping->shippingDrivers()->where('driver_id', $usuario->driver_id)->exists());
 
         if (! $eProprietario && ! $eMotorista) {
             abort(403, 'Você não tem acesso a esta solicitação.');

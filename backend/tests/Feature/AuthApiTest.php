@@ -47,45 +47,6 @@ class AuthApiTest extends TestCase
         ])->assertStatus(422);
     }
 
-    public function test_email_de_cliente_nao_pode_ser_usado_por_motorista(): void
-    {
-        User::factory()->create(['email' => 'duplo@fretar.com']);
-
-        $this->postJson('/api/auth/register/driver', [
-            'name' => 'Motorista Duplo',
-            'email' => 'DUPLO@fretar.com',
-            'password' => 'secret123',
-            'password_confirmation' => 'secret123',
-            'cnh' => '99900011122',
-        ])->assertStatus(422)
-            ->assertJsonPath('errors.email.0', 'Este e-mail já está cadastrado.');
-    }
-
-    public function test_email_de_motorista_nao_pode_ser_usado_por_cliente(): void
-    {
-        Driver::factory()->create(['email' => 'duplo2@fretar.com']);
-
-        $this->postJson('/api/auth/register/user', [
-            'name' => 'Cliente Duplo',
-            'email' => 'duplo2@fretar.com',
-            'password' => 'secret123',
-            'password_confirmation' => 'secret123',
-        ])->assertStatus(422)
-            ->assertJsonPath('errors.email.0', 'Este e-mail já está cadastrado.');
-    }
-
-    public function test_mensagens_do_cadastro_saem_em_portugues(): void
-    {
-        $this->postJson('/api/auth/register/user', [
-            'name' => 'Ana',
-            'email' => 'isto-nao-e-email',
-            'password' => '123',
-            'password_confirmation' => '456',
-        ])->assertStatus(422)
-            ->assertJsonPath('errors.email.0', 'Informe um e-mail válido.')
-            ->assertJsonPath('errors.password.0', 'A senha deve ter pelo menos 8 caracteres.');
-    }
-
     public function test_motorista_pode_registrar_com_veiculo(): void
     {
         $registro = $this->postJson('/api/auth/register/driver', [

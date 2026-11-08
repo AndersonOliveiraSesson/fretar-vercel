@@ -1,7 +1,6 @@
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { api } from "../lib/api";
-import { apenasDigitos, mascararCpf, mascararTelefone } from "../lib/mascaras";
 
 const ESTADOS = [
   ["AC", "Acre"], ["AL", "Alagoas"], ["AP", "Amapá"], ["AM", "Amazonas"],
@@ -66,59 +65,6 @@ function validarChavePix(tipo, valor) {
     : { erro: "Chave aleatória inválida (32 a 36 caracteres)." };
 }
 
-function mascararCep(valor) {
-  const d = apenasDigitos(valor).slice(0, 8);
-  return d.length > 5 ? `${d.slice(0, 5)}-${d.slice(5)}` : d;
-}
-
-// maiusculas, so letras e numeros, 7 caracteres (ABC1D23 ou ABC1234)
-function normalizarPlaca(valor) {
-  return String(valor || "")
-    .toUpperCase()
-    .replace(/[^A-Z0-9]/g, "")
-    .slice(0, 7);
-}
-
-function placaValida(valor) {
-  return /^[A-Z]{3}[0-9][A-Z0-9][0-9]{2}$/.test(valor);
-}
-
-function emailValido(valor) {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(valor || "").trim());
-}
-
-// Devolve a mensagem do primeiro problema de formato, ou null se estiver tudo certo.
-function validarFormato(dados, tipoConta) {
-  if (dados.nome.trim().length < 3) return "Informe o nome completo.";
-  if (!emailValido(dados.email)) return "Informe um e-mail válido.";
-
-  const telefone = apenasDigitos(dados.telefone);
-  if (telefone.length < 10 || telefone.length > 11) {
-    return "Informe um telefone válido, com DDD.";
-  }
-
-  if (tipoConta === "cliente") {
-    if (!cpfValido(dados.cpf)) return "CPF inválido.";
-  } else {
-    if (apenasDigitos(dados.cnh).length !== 11) return "A CNH deve ter 11 dígitos.";
-    if (!placaValida(dados.placa)) return "Placa inválida (ex.: ABC1D23 ou ABC1234).";
-
-    const capacidade = Number(dados.capacidade);
-    if (!Number.isFinite(capacidade) || capacidade <= 0) {
-      return "A capacidade de carga deve ser maior que zero.";
-    }
-    if (capacidade > 100000) {
-      return "Capacidade de carga muito alta. Confira o valor (em kg).";
-    }
-  }
-
-  if (apenasDigitos(dados.cep).length !== 8) {
-    return "Informe um CEP válido (8 dígitos).";
-  }
-
-  return null;
-}
-
 function montarEndereco(dados) {
   return [
     [dados.endereco, dados.numero].filter(Boolean).join(", "),
@@ -161,35 +107,13 @@ function Cadastro() {
   const [tipoMensagem, setTipoMensagem] = useState("");
   const [buscandoCep, setBuscandoCep] = useState(false);
   const [carregando, setCarregando] = useState(false);
-  const [concluido, setConcluido] = useState(false);
-  const [tentativas, setTentativas] = useState(0);
-
-  const refMensagem = useRef(null);
-  const temporizador = useRef(null);
-
-  // a mensagem fica no topo do formulario: leva a tela ate ela quando aparece
-  useEffect(() => {
-    if (mensagem) {
-      refMensagem.current?.scrollIntoView({ behavior: "smooth", block: "center" });
-    }
-  }, [mensagem, tentativas]);
-
-  useEffect(() => () => clearTimeout(temporizador.current), []);
 
   function alterarDados(event) {
     const { name, value, type, checked } = event.target;
 
-    let novoValor = type === "checkbox" ? checked : value;
-
-    if (name === "telefone") novoValor = mascararTelefone(value);
-    else if (name === "cpf") novoValor = mascararCpf(value);
-    else if (name === "cep") novoValor = mascararCep(value);
-    else if (name === "placa") novoValor = normalizarPlaca(value);
-    else if (name === "cnh") novoValor = apenasDigitos(value).slice(0, 11);
-
     setDados((atual) => ({
       ...atual,
-      [name]: novoValor,
+      [name]: type === "checkbox" ? checked : value,
     }));
 
     setMensagem("");
@@ -219,8 +143,8 @@ function Cadastro() {
   const camposFreteiro = [
     dados.nome,
     dados.email,
-    dados.telefone,
     dados.cpf,
+    dados.telefone,
     dados.cnh,
     dados.senha,
     dados.confirmarSenha,
@@ -238,21 +162,11 @@ function Cadastro() {
   async function cadastrar(event) {
     event.preventDefault();
 
-    if (carregando || concluido) return;
-    setTentativas((n) => n + 1);
-
     const campos =
       tipoConta === "cliente" ? camposCliente : camposFreteiro;
 
     if (campos.some((campo) => String(campo).trim() === "")) {
       setMensagem("⚠️ Preencha todos os campos.");
-      setTipoMensagem("erro");
-      return;
-    }
-
-    const erroFormato = validarFormato(dados, tipoConta);
-    if (erroFormato) {
-      setMensagem(`⚠️ ${erroFormato}`);
       setTipoMensagem("erro");
       return;
     }
@@ -279,7 +193,7 @@ function Cadastro() {
       }
     }
 
-    if (!dados.termos) {
+    if (tipoConta === "cliente" && !dados.termos) {
       setMensagem(
         "⚠️ Você precisa aceitar os Termos de Uso e a Política de Privacidade."
       );
@@ -313,7 +227,6 @@ function Cadastro() {
             password: dados.senha,
             password_confirmation: dados.confirmarSenha,
             phone: dados.telefone,
-            cpf: dados.cpf,
             address: montarEndereco(dados),
             pix_key_type: dados.tipoPix,
             pix_key: pix.chave,
@@ -337,9 +250,7 @@ function Cadastro() {
         confirmarSenha: "",
       }));
 
-      // trava o botao: um segundo clique cadastraria de novo e mostraria "e-mail ja em uso"
-      setConcluido(true);
-      temporizador.current = setTimeout(() => navigate("/login"), 1500);
+      setTimeout(() => navigate("/login"), 1500);
     } catch (erro) {
       setTipoMensagem("erro");
       setMensagem(erro.message);
@@ -350,7 +261,6 @@ function Cadastro() {
 
   async function buscarCep() {
     const cep = dados.cep.replace(/\D/g, "");
-    setTentativas((n) => n + 1);
 
     if (cep.length !== 8) {
       setMensagem("⚠️ Digite um CEP válido (8 dígitos).");
@@ -377,14 +287,9 @@ function Cadastro() {
       }));
 
       setTipoMensagem("sucesso");
-      const local = [
-        endereco.logradouro,
-        [endereco.localidade, endereco.uf].filter(Boolean).join("/"),
-      ]
-        .filter(Boolean)
-        .join(", ");
-
-      setMensagem(`✓ Endereço encontrado: ${local}`);
+      setMensagem(
+        `✓ Endereço encontrado: ${endereco.logradouro}, ${endereco.localidade}/${endereco.uf}`
+      );
     } catch {
       setTipoMensagem("erro");
       setMensagem("Não foi possível buscar o CEP. Verifique e tente novamente.");
@@ -409,25 +314,19 @@ function Cadastro() {
             className={ehCliente ? "tipo-conta ativo" : "tipo-conta"}
             onClick={() => alternarTipoConta("cliente")}
           >
-            Sou cliente
+            👤 Sou cliente
           </button>
           <button
             type="button"
             className={!ehCliente ? "tipo-conta ativo" : "tipo-conta"}
             onClick={() => alternarTipoConta("freteiro")}
           >
-            Sou freteiro
+            🚚 Sou freteiro
           </button>
         </div>
 
         {mensagem && (
-          <div
-            ref={refMensagem}
-            role="alert"
-            className={`mensagem-cadastro ${tipoMensagem}`}
-          >
-            {mensagem}
-          </div>
+          <div className={`mensagem-cadastro ${tipoMensagem}`}>{mensagem}</div>
         )}
 
         <form className="cadastro-formulario" onSubmit={cadastrar}>
@@ -437,7 +336,6 @@ function Cadastro() {
               <input
                 id="nome"
                 name="nome"
-                autoComplete="name"
                 type="text"
                 placeholder="Digite seu nome completo"
                 value={dados.nome}
@@ -450,7 +348,6 @@ function Cadastro() {
               <input
                 id="telefone"
                 name="telefone"
-                autoComplete="tel"
                 type="tel"
                 placeholder="(00) 00000-0000"
                 value={dados.telefone}
@@ -459,33 +356,33 @@ function Cadastro() {
             </div>
           </div>
 
-                    <div className="linha-cadastro">
+          <div className="linha-cadastro">
             <div className="campo-cadastro">
               <label htmlFor="email">E-mail</label>
               <input
                 id="email"
                 name="email"
-                autoComplete="email"
                 type="email"
                 placeholder="seuemail@exemplo.com"
                 value={dados.email}
                 onChange={alterarDados}
               />
             </div>
-            
-            <div className="campo-cadastro">
-              <label htmlFor="cpf">CPF</label>
-              <input
-                id="cpf"
-                name="cpf"
-                type="text"
-                placeholder="000.000.000-00"
-                value={dados.cpf}
-                onChange={alterarDados}
-              />
-            </div>
-          </div>
 
+            {ehCliente && (
+              <div className="campo-cadastro">
+                <label htmlFor="cpf">CPF</label>
+                <input
+                  id="cpf"
+                  name="cpf"
+                  type="text"
+                  placeholder="000.000.000-00"
+                  value={dados.cpf}
+                  onChange={alterarDados}
+                />
+              </div>
+            )}
+          </div>
 
           <>
               <div className="linha-cadastro">
@@ -496,7 +393,6 @@ function Cadastro() {
                   <input
                     id="endereco"
                     name="endereco"
-                autoComplete="street-address"
                     type="text"
                     placeholder="Rua, bairro"
                     value={dados.endereco}
@@ -524,7 +420,6 @@ function Cadastro() {
                     <input
                       id="cep"
                       name="cep"
-                autoComplete="postal-code"
                       type="text"
                       placeholder="00000-000"
                       value={dados.cep}
@@ -547,7 +442,6 @@ function Cadastro() {
                   <input
                     id="cidade"
                     name="cidade"
-                autoComplete="address-level2"
                     type="text"
                     placeholder="Sua cidade"
                     value={dados.cidade}
@@ -583,7 +477,6 @@ function Cadastro() {
                 <input
                   id="cnh"
                   name="cnh"
-                inputMode="numeric"
                   type="text"
                   placeholder="00000000000"
                   value={dados.cnh}
@@ -686,7 +579,6 @@ function Cadastro() {
                 <input
                   id="senha"
                   name="senha"
-                autoComplete="new-password"
                   type={mostrarSenha ? "text" : "password"}
                   placeholder="Mínimo 8 caracteres"
                   value={dados.senha}
@@ -708,7 +600,6 @@ function Cadastro() {
                 <input
                   id="confirmarSenha"
                   name="confirmarSenha"
-                autoComplete="new-password"
                   type={mostrarConfirmacao ? "text" : "password"}
                   placeholder="Confirme sua senha"
                   value={dados.confirmarSenha}
@@ -725,37 +616,27 @@ function Cadastro() {
             </div>
           </div>
 
-          <label className="termos-cadastro">
-            <input
-              type="checkbox"
-              name="termos"
-              checked={dados.termos}
-              onChange={alterarDados}
-            />
-            <span>
-              Li e aceito os{" "}
-              <Link to="/privacidade" target="_blank">
-                Termos de Uso
-              </Link>{" "}
-              e a{" "}
-              <Link to="/privacidade" target="_blank">
-                Política de Privacidade
-              </Link>
-            </span>
-          </label>
+          {ehCliente && (
+            <label className="termos-cadastro">
+              <input
+                type="checkbox"
+                name="termos"
+                checked={dados.termos}
+                onChange={alterarDados}
+              />
+              <span>
+                Li e aceito os <a href="#termos">Termos de Uso</a> e a{" "}
+                <Link to="/privacidade">Política de Privacidade</Link>
+              </span>
+            </label>
+          )}
 
-          <button
-            type="submit"
-            className="btn-cadastrar"
-            disabled={carregando || concluido}
-          >
+          <button type="submit" className="btn-cadastrar" disabled={carregando}>
             {carregando
               ? "Cadastrando..."
-              : concluido
-                ? "✓ Cadastrado"
-                : ehCliente
-                ? "Cadastrar"
-                : "Cadastrar"}
+              : ehCliente
+                ? "👤 Cadastrar"
+                : "🚚 Cadastrar"}
           </button>
         </form>
 

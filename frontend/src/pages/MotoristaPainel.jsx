@@ -54,25 +54,7 @@ function MotoristaPainel() {
   const [mensagem, setMensagem] = useState("");
   const [emProcessamento, setEmProcessamento] = useState(null);
 
-  // Defesa extra (o back ja filtra): so aparece a oferta que ainda vale para ESTE motorista.
-  // Corrida aceita por outro motorista, cancelada ou em andamento com outro some da tela.
-  const ofertasVisiveis = ofertas.filter((oferta) => {
-    const frete = oferta.shipping;
-
-    if (!frete) return false;
-
-    if (oferta.offer_status === "pending") {
-      return frete.status === "searching_driver";
-    }
-
-    if (oferta.offer_status === "accepted") {
-      return frete.driver?.id === usuario?.id;
-    }
-
-    return oferta.offer_status === "rejected";
-  });
-
-  const avaliacoes = ofertasVisiveis
+  const avaliacoes = ofertas
     .map((oferta) => oferta.shipping?.avaliacao)
     .filter(Boolean);
   const notaMedia = avaliacoes.length
@@ -235,14 +217,14 @@ function MotoristaPainel() {
 
         {carregando && <p className="painel-vazio">Carregando ofertas...</p>}
 
-        {!carregando && ofertasVisiveis.length === 0 && (
+        {!carregando && ofertas.length === 0 && (
           <p className="painel-vazio">
             Nenhuma oferta no momento. Aguarde novas solicitações.
           </p>
         )}
 
         <ul className="painel-lista">
-          {ofertasVisiveis.map((oferta) => {
+          {ofertas.map((oferta) => {
             const frete = oferta.shipping;
             const ocupado = emProcessamento === frete.id;
             const simEmAndamento = simulacaoEmAndamento(frete);
@@ -325,9 +307,7 @@ function MotoristaPainel() {
                     <span className="frete-badge">Recusada</span>
                   )}
 
-                  {oferta.offer_status === "accepted" &&
-                    temCoordenadas(frete) &&
-                    (simEmAndamento || podeSimular) && (
+                  {temCoordenadas(frete) && (simEmAndamento || podeSimular) && (
                     <button
                       type="button"
                       className={

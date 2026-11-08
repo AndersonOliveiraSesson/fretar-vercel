@@ -37,30 +37,27 @@ class AuthController extends Controller
         ], 201);
     }
 
-        public function registrarDriver(RegisterDriverRequest $request): JsonResponse
+    public function registrarDriver(RegisterDriverRequest $request): JsonResponse
     {
         $motorista = Driver::create([
             'name' => $request->name,
             'email' => $request->email,
             'password_hash' => Hash::make($request->password),
-            'cpf' => $request->cpf,
             'cnh' => $request->cnh,
             'phone' => $request->phone,
             'address' => $request->address,
             'pix_key_type' => $request->pix_key_type,
             'pix_key' => $request->pix_key,
+            // Nasce online para poder receber ofertas (ainda nao ha botao de ficar online).
             'status_online' => true,
         ]);
 
-        // CORREÇÃO AQUI: Garante que pega o ID correto independente do nome da chave primária
-        $idDoMotorista = $motorista->driver_id ?? $motorista->id;
-
         if ($request->filled('vehicle_type') || $request->filled('license_plate')) {
             Vehicle::create([
-                'driver_id' => $idDoMotorista, // Usa a variável corrigida
+                'driver_id' => $motorista->driver_id,
                 'vehicle_type' => $request->vehicle_type,
                 'license_plate' => $request->license_plate,
-                'capacity_load_kg' => $request->capacity_load_kg ? Number($request->capacity_load_kg) : null,
+                'capacity_load_kg' => $request->capacity_load_kg,
             ]);
         }
 
@@ -73,7 +70,6 @@ class AuthController extends Controller
             'usuario' => new DriverResource($motorista),
         ], 201);
     }
-
 
     public function login(LoginRequest $request): JsonResponse
     {

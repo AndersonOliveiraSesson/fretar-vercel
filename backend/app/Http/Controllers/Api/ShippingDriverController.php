@@ -25,17 +25,6 @@ class ShippingDriverController extends Controller
         // (pending/accepted/rejected), para o painel do motorista saber o que
         // ja foi respondido, + o recurso da solicitacao.
         $ofertas = $motorista->shippingDriverOffers()
-            // ofertas fechadas (outro motorista aceitou, ou o cliente cancelou) nao aparecem
-            ->whereIn('status', [
-                ShippingDriverStatus::Pending->value,
-                ShippingDriverStatus::Accepted->value,
-                ShippingDriverStatus::Rejected->value,
-            ])
-            // uma oferta pendente so vale enquanto a corrida ainda esta sendo procurada
-            ->where(function ($q) {
-                $q->where('status', '<>', ShippingDriverStatus::Pending->value)
-                    ->orWhereHas('shipping', fn ($s) => $s->where('status', 'searching_driver'));
-            })
             ->with(['shipping.user', 'shipping.driver', 'shipping.evaluation'])
             ->orderByDesc('shipping_id')
             ->get()

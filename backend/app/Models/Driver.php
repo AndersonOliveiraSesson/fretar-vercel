@@ -18,7 +18,6 @@ class Driver extends Authenticatable
         'name',
         'email',
         'password_hash',
-        'cpf',
         'phone',
         'address',
         'cnh',
