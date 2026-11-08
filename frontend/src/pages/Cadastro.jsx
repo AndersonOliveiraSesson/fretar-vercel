@@ -220,6 +220,7 @@ function Cadastro() {
     dados.nome,
     dados.email,
     dados.telefone,
+    dados.cpf,
     dados.cnh,
     dados.senha,
     dados.confirmarSenha,
@@ -312,6 +313,7 @@ function Cadastro() {
             password: dados.senha,
             password_confirmation: dados.confirmarSenha,
             phone: dados.telefone,
+            cpf: dados.cpf,
             address: montarEndereco(dados),
             pix_key_type: dados.tipoPix,
             pix_key: pix.chave,
@@ -407,14 +409,14 @@ function Cadastro() {
             className={ehCliente ? "tipo-conta ativo" : "tipo-conta"}
             onClick={() => alternarTipoConta("cliente")}
           >
-            👤 Sou cliente
+            Sou cliente
           </button>
           <button
             type="button"
             className={!ehCliente ? "tipo-conta ativo" : "tipo-conta"}
             onClick={() => alternarTipoConta("freteiro")}
           >
-            🚚 Sou freteiro
+            Sou freteiro
           </button>
         </div>
 
@@ -457,7 +459,7 @@ function Cadastro() {
             </div>
           </div>
 
-          <div className="linha-cadastro">
+                    <div className="linha-cadastro">
             <div className="campo-cadastro">
               <label htmlFor="email">E-mail</label>
               <input
@@ -470,21 +472,20 @@ function Cadastro() {
                 onChange={alterarDados}
               />
             </div>
-
-            {ehCliente && (
-              <div className="campo-cadastro">
-                <label htmlFor="cpf">CPF</label>
-                <input
-                  id="cpf"
-                  name="cpf"
-                  type="text"
-                  placeholder="000.000.000-00"
-                  value={dados.cpf}
-                  onChange={alterarDados}
-                />
-              </div>
-            )}
+            
+            <div className="campo-cadastro">
+              <label htmlFor="cpf">CPF</label>
+              <input
+                id="cpf"
+                name="cpf"
+                type="text"
+                placeholder="000.000.000-00"
+                value={dados.cpf}
+                onChange={alterarDados}
+              />
+            </div>
           </div>
+
 
           <>
               <div className="linha-cadastro">
@@ -753,8 +754,8 @@ function Cadastro() {
               : concluido
                 ? "✓ Cadastrado"
                 : ehCliente
-                ? "👤 Cadastrar"
-                : "🚚 Cadastrar"}
+                ? "Cadastrar"
+                : "Cadastrar"}
           </button>
         </form>
 

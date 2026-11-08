@@ -25,6 +25,16 @@ class RegisterDriverRequest extends FormRequest
                 Rule::unique('users', 'email'),
             ],
             'password' => ['required', 'string', 'min:8', 'confirmed'],
+
+            'cpf' => [
+                'required', 
+                'string', 
+                'max:14', 
+                Rule::unique('drivers', 'cpf'), 
+                Rule::unique('users', 'cpf')
+            ],
+
+
             'cnh' => [
                 'required',
                 'string',
@@ -51,6 +61,8 @@ class RegisterDriverRequest extends FormRequest
             'password.required' => 'Informe a senha.',
             'password.min' => 'A senha deve ter pelo menos 8 caracteres.',
             'password.confirmed' => 'A confirmação da senha não confere.',
+            'cpf.required' => 'Informe o CPF.',
+            'cpf.unique' => 'Este CPF já está cadastrado.',
             'cnh.required' => 'Informe a CNH.',
             'cnh.unique' => 'Esta CNH já está cadastrada.',
             'license_plate.unique' => 'Esta placa já está cadastrada.',
